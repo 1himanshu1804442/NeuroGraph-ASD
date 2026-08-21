@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: neurograph-backend
+  profiles:
+    active: dev
+
+  # Database configuration: PostgreSQL by default for production & development persistence
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/neurograph_asd_db}
+    username: ${SPRING_DATASOURCE_USERNAME:neurograph}
+    password: ${SPRING_DATASOURCE_PASSWORD:neurograph123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+      pool-name: NeuroGraphHikariPool
+      max-lifetime: 2000000
+      connection-timeout: 30000
+
+  # Spring Data JPA configuration
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 25
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Python ML Microservice integration configuration
+neurograph:
+  inference:
+    # URL to the FastAPI PyTorch GAT inference microservice
+    base-url: ${PYTHON_ML_BASE_URL:http://localhost:8000/api}
+    connect-timeout-ms: 5000
+    read-timeout-ms: 30000
+  cors:
+    allowed-origins:
+      - "http://localhost:3000"
+      - "http://localhost:5173"
+      - "http://127.0.0.1:3000"
+      - "http://127.0.0.1:5173"
+
+# Verbose SLF4J / Logback Logging configuration
+logging:
+  level:
+    root: INFO
+    com.neurograph.backend: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
