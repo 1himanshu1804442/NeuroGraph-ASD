@@ -1,0 +1,29 @@
+# Core Deep Learning & Graph Geometric Learning
+torch>=2.0.0
+torch-geometric>=2.4.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Neuroimaging & Connectome Analysis
+nilearn>=0.10.0
+nibabel>=5.0.0
+networkx>=3.0
+
+# Machine Learning & Metrics
+scikit-learn>=1.3.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+
+# API & Web Server
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.2.0
+python-multipart>=0.0.6
+
+# Code Quality, Formatting & Testing
+pytest>=7.4.0
+httpx>=0.26.0
+requests>=2.31.0
+ruff>=0.3.0
+mypy>=1.9.0

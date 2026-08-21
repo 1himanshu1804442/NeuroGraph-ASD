@@ -1,0 +1,91 @@
+# ==============================================================================
+# NeuroGraph-ASD Git Ignore Configuration
+# ==============================================================================
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE & Editor Configuration
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.factorypath
+bin/
+
+# Node & Frontend (React / Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/.turbo/
+node_modules/
+dist/
+
+# Java & Spring Boot (Maven / Gradle)
+backend-spring/target/
+backend-spring/.mvn/timing.properties
+backend-spring/.mvn/wrapper/maven-wrapper.jar
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# Python & Deep Learning
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+.coverage
+htmlcov/
+*.pt
+*.pth
+*.onnx
+*.npy
+*.npz
+*.h5
+
+# Local Logs & Databases
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+backend-spring/*.db
+.system_generated/
