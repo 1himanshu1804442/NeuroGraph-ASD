@@ -1,0 +1,126 @@
+version: '3.8'
+
+# ==============================================================================
+# NeuroGraph-ASD Clinical Diagnostic Platform - Multi-Tier Orchestration
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL 16 Relational Database Service
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: neurograph-postgres
+    environment:
+      POSTGRES_USER: neurograph
+      POSTGRES_PASSWORD: neurograph123
+      POSTGRES_DB: neurograph_asd_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neurograph -d neurograph_asd_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - neurograph-network
+
+  # ----------------------------------------------------------------------------
+  # 2. Python FastAPI PyTorch GAT ML Engine Sidecar
+  # ----------------------------------------------------------------------------
+  ai-engine-python:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: neurograph-ai-engine
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_NAME=NeuroGraph-ASD AI Diagnostic Engine
+      - API_V1_STR=/api
+      - ENABLE_XAI_CACHE=true
+      - CACHE_DIR=/app/.cache/xai_saliency
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - xai_cache:/app/.cache/xai_saliency
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - neurograph-network
+
+  # ----------------------------------------------------------------------------
+  # 3. Java Spring Boot 3 Backend Gateway Service
+  # ----------------------------------------------------------------------------
+  backend-spring:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+    container_name: neurograph-spring-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/neurograph_asd_db
+      - SPRING_DATASOURCE_USERNAME=neurograph
+      - SPRING_DATASOURCE_PASSWORD=neurograph123
+      - AI_ENGINE_URL=http://ai-engine-python:8000
+      - FASTAPI_URL=http://ai-engine-python:8000
+      - SERVER_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-engine-python:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    restart: unless-stopped
+    networks:
+      - neurograph-network
+
+  # ----------------------------------------------------------------------------
+  # 4. React 18 + Vite Frontend Dashboard (Nginx)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: neurograph-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=/api
+    depends_on:
+      - backend-spring
+    restart: unless-stopped
+    networks:
+      - neurograph-network
+
+# ------------------------------------------------------------------------------
+# Persistent Volumes Definition
+# ------------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+  xai_cache:
+    driver: local
+
+# ------------------------------------------------------------------------------
+# Bridge Network for Inter-Container Communication
+# ------------------------------------------------------------------------------
+networks:
+  neurograph-network:
+    driver: bridge
