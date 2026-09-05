@@ -149,3 +149,25 @@ export async function fetchDiagnosticReports() {
     throw error;
   }
 }
+
+/**
+ * Clears all historical diagnostic reports from PostgreSQL.
+ * Target Endpoint: DELETE /api/v1/reports
+ * 
+ * @returns {Promise<boolean>} Success status.
+ */
+export async function clearAllDiagnosticReports() {
+  try {
+    console.info('[NeuroGraph API] Requesting deletion of historical diagnostic reports...');
+    const response = await fetch(`${API_BASE_URL}/v1/reports`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`Clear reports HTTP error! status: ${response.status}`);
+    }
+    return true;
+  } catch (error) {
+    console.error('[NeuroGraph API Error] Failed to clear diagnostic reports:', error);
+    throw error;
+  }
+}

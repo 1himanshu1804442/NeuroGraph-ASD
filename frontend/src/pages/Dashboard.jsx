@@ -20,10 +20,13 @@ export default function Dashboard() {
     predictionResult,
     isLoading,
     errorMessage,
+    sampleCases,
     patientHistory,
     isHistoryLoading,
     historyErrorMessage,
     refetchHistory,
+    handleClearHistory,
+    isHistoryClearing,
     isHistoryModalOpen,
     setIsHistoryModalOpen,
     handleSelectHistoricalPatient,
@@ -61,6 +64,8 @@ export default function Dashboard() {
               demographics={demographics}
               onChange={setDemographics}
               onLoadPreset={handlePresetSelect}
+              selectedPreset={selectedPreset}
+              sampleCases={sampleCases}
               onSubmit={handleFormSubmit}
               isLoading={isLoading}
             />
@@ -96,6 +101,8 @@ export default function Dashboard() {
         isLoading={isHistoryLoading}
         error={historyErrorMessage}
         onRefresh={refetchHistory}
+        onClearHistory={handleClearHistory}
+        isClearing={isHistoryClearing}
         onSelectPatient={handleSelectHistoricalPatient}
       />
     </div>

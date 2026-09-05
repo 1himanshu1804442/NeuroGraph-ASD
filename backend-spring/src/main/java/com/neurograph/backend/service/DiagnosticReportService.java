@@ -129,6 +129,15 @@ public class DiagnosticReportService {
     }
 
     /**
+     * Clears all historical diagnostic reports from the database.
+     */
+    @Transactional
+    public void clearAllReports() {
+        log.warn("[DiagnosticReportService] Deleting all historical diagnostic reports.");
+        diagnosticReportRepository.deleteAll();
+    }
+
+    /**
      * Maps a JPA DiagnosticReport entity to a DiagnosticResponseDTO.
      */
     private DiagnosticResponseDTO mapToDTO(DiagnosticReport report) {

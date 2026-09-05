@@ -4,6 +4,7 @@ import {
   Search,
   X,
   RefreshCw,
+  Trash2,
   AlertTriangle,
   CheckCircle2,
   Calendar,
@@ -29,6 +30,8 @@ import {
  * @param {boolean} props.isLoading - Whether historical records are currently being fetched.
  * @param {string|null} props.error - Error message if query failed.
  * @param {Function} props.onRefresh - Callback to refetch patient history.
+ * @param {Function} props.onClearHistory - Callback to wipe patient history.
+ * @param {boolean} props.isClearing - Whether history is currently being cleared.
  * @param {Function} props.onSelectPatient - Callback to load selected patient into the workspace.
  */
 export default function PatientHistoryModal({
@@ -38,6 +41,8 @@ export default function PatientHistoryModal({
   isLoading = false,
   error = null,
   onRefresh,
+  onClearHistory,
+  isClearing = false,
   onSelectPatient,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -168,6 +173,36 @@ export default function PatientHistoryModal({
 
           {/* Header Action Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onClearHistory && records.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to clear all historical diagnostic records from the database?')) {
+                    onClearHistory();
+                  }
+                }}
+                disabled={isClearing}
+                title="Clear All Stored Records"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  color: '#fca5a5',
+                  cursor: isClearing ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Trash2 size={14} />
+                <span>{isClearing ? 'Clearing...' : 'Clear All'}</span>
+              </button>
+            )}
+
             {onRefresh && (
               <button
                 type="button"

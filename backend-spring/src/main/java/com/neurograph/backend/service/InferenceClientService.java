@@ -115,9 +115,9 @@ public class InferenceClientService {
 
         // Base probability prior
         double basePrior = 0.50;
-        if (preset.equals("asd_sample") || preset.equals("asd")) {
+        if (preset.contains("asd")) {
             basePrior = 0.74;
-        } else if (preset.equals("control_sample") || preset.equals("control") || preset.equals("tc")) {
+        } else if (preset.contains("control") || preset.contains("ctrl") || preset.contains("tc")) {
             basePrior = 0.24;
         }
 
@@ -244,7 +244,7 @@ public class InferenceClientService {
                 .cases(List.of(
                         SampleCaseDTO.builder()
                                 .id("asd_sample")
-                                .label("Suspected ASD Case (Male, Age 9.5, FIQ 98)")
+                                .label("Suspected ASD Case: PEDIATRIC_ASD_01 (Male, Age 9.5, FIQ 98)")
                                 .demographics(PatientDemographicsDTO.builder()
                                         .subjectId("PEDIATRIC_ASD_01")
                                         .age(9.5)
@@ -255,13 +255,79 @@ public class InferenceClientService {
                                 .build(),
                         SampleCaseDTO.builder()
                                 .id("control_sample")
-                                .label("Typical Control Case (Female, Age 12.0, FIQ 112)")
+                                .label("Typical Control Case: CONTROL_TC_01 (Female, Age 12.0, FIQ 112)")
                                 .demographics(PatientDemographicsDTO.builder()
                                         .subjectId("CONTROL_TC_01")
                                         .age(12.0)
                                         .sex(0)
                                         .fullScaleIq(112.0)
                                         .siteId("STANFORD_MED")
+                                        .build())
+                                .build(),
+                        SampleCaseDTO.builder()
+                                .id("abide_asd_pitt_50013")
+                                .label("ABIDE I ASD: Pitt_0050013 (Male, Age 9.3, FIQ 86, PITT)")
+                                .demographics(PatientDemographicsDTO.builder()
+                                        .subjectId("Pitt_0050013")
+                                        .age(9.33)
+                                        .sex(1)
+                                        .fullScaleIq(86.0)
+                                        .siteId("PITT")
+                                        .build())
+                                .build(),
+                        SampleCaseDTO.builder()
+                                .id("abide_asd_olin_50122")
+                                .label("ABIDE I ASD: Olin_0050122 (Male, Age 12.0, FIQ 112, OLIN)")
+                                .demographics(PatientDemographicsDTO.builder()
+                                        .subjectId("Olin_0050122")
+                                        .age(12.0)
+                                        .sex(1)
+                                        .fullScaleIq(112.0)
+                                        .siteId("OLIN")
+                                        .build())
+                                .build(),
+                        SampleCaseDTO.builder()
+                                .id("abide_asd_olin_50119")
+                                .label("ABIDE I ASD: Olin_0050119 (Female, Age 19.0, FIQ 132, OLIN)")
+                                .demographics(PatientDemographicsDTO.builder()
+                                        .subjectId("Olin_0050119")
+                                        .age(19.0)
+                                        .sex(0)
+                                        .fullScaleIq(132.0)
+                                        .siteId("OLIN")
+                                        .build())
+                                .build(),
+                        SampleCaseDTO.builder()
+                                .id("abide_ctrl_pitt_50033")
+                                .label("ABIDE I Control: Pitt_0050033 (Male, Age 12.2, FIQ 98, PITT)")
+                                .demographics(PatientDemographicsDTO.builder()
+                                        .subjectId("Pitt_0050033")
+                                        .age(12.15)
+                                        .sex(1)
+                                        .fullScaleIq(98.0)
+                                        .siteId("PITT")
+                                        .build())
+                                .build(),
+                        SampleCaseDTO.builder()
+                                .id("abide_ctrl_olin_50114")
+                                .label("ABIDE I Control: Olin_0050114 (Female, Age 20.0, FIQ 127, OLIN)")
+                                .demographics(PatientDemographicsDTO.builder()
+                                        .subjectId("Olin_0050114")
+                                        .age(20.0)
+                                        .sex(0)
+                                        .fullScaleIq(127.0)
+                                        .siteId("OLIN")
+                                        .build())
+                                .build(),
+                        SampleCaseDTO.builder()
+                                .id("abide_ctrl_ohsu_50161")
+                                .label("ABIDE I Control: OHSU_0050161 (Male, Age 9.2, FIQ 104, OHSU)")
+                                .demographics(PatientDemographicsDTO.builder()
+                                        .subjectId("OHSU_0050161")
+                                        .age(9.15)
+                                        .sex(1)
+                                        .fullScaleIq(104.0)
+                                        .siteId("OHSU")
                                         .build())
                                 .build()
                 ))

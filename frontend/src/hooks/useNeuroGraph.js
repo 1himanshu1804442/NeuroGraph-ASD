@@ -279,10 +279,22 @@ export function useNeuroGraph() {
   });
 
   // Handler to switch clinical preset profiles
-  const handlePresetSelect = (presetId) => {
+  const handlePresetSelect = (presetIdOrObject) => {
+    const presetId = typeof presetIdOrObject === 'string' ? presetIdOrObject : presetIdOrObject?.id;
     setSelectedPreset(presetId);
+
+    // Match against sample cases returned from the backend
+    const matchedSample = sampleCases.find((c) => c.id === presetId);
     let newDemo;
-    if (presetId === 'asd_sample') {
+    if (matchedSample && matchedSample.demographics) {
+      newDemo = {
+        subject_id: matchedSample.demographics.subject_id || matchedSample.demographics.subjectId,
+        age: Number(matchedSample.demographics.age),
+        sex: Number(matchedSample.demographics.sex),
+        full_scale_iq: Number(matchedSample.demographics.full_scale_iq || matchedSample.demographics.fullScaleIq),
+        site_id: matchedSample.demographics.site_id || matchedSample.demographics.siteId,
+      };
+    } else if (presetId.toLowerCase().includes('asd')) {
       newDemo = {
         subject_id: 'PEDIATRIC_ASD_01',
         age: 9.5,
@@ -311,13 +323,10 @@ export function useNeuroGraph() {
   // Handler to run inference on custom form submission
   const handleFormSubmit = (e) => {
     if (e) e.preventDefault();
-    const isExactPreset =
-      (selectedPreset === 'asd_sample' && demographics.subject_id === 'PEDIATRIC_ASD_01') ||
-      (selectedPreset === 'control_sample' && demographics.subject_id === 'CONTROL_TC_01');
-
+    // Custom form submissions evaluate exact entered parameters dynamically
     predictMutation.mutate({
       demographics,
-      preset_case: isExactPreset ? selectedPreset : null,
+      preset_case: null,
     });
   };
 
@@ -363,6 +372,19 @@ export function useNeuroGraph() {
     }
   };
 
+  // 5. Clear Patient Reports Mutation
+  const clearReportsMutation = useMutation({
+    mutationFn: clearAllDiagnosticReports,
+    onSuccess: () => {
+      console.info('[useNeuroGraph] Historical records successfully cleared.');
+      queryClient.invalidateQueries({ queryKey: ['patientHistory'] });
+    },
+  });
+
+  const handleClearHistory = () => {
+    clearReportsMutation.mutate();
+  };
+
   return {
     isOnline,
     demographics,
@@ -381,6 +403,8 @@ export function useNeuroGraph() {
     isHistoryError,
     historyErrorMessage: isHistoryError ? (historyErrorObj?.message || 'Failed to load records') : null,
     refetchHistory,
+    handleClearHistory,
+    isHistoryClearing: clearReportsMutation.isPending,
     isHistoryModalOpen,
     setIsHistoryModalOpen,
     handleSelectHistoricalPatient,

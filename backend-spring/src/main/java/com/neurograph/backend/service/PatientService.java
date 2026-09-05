@@ -99,6 +99,14 @@ public class PatientService {
     public Patient findOrCreatePatient(PatientDemographicsDTO demographics) {
         log.info("[PatientService] Synchronizing patient record for subjectId: {}", demographics.getSubjectId());
         return patientRepository.findBySubjectId(demographics.getSubjectId())
+                .map(existing -> {
+                    log.info("[PatientService] Updating existing patient demographics for: {}", demographics.getSubjectId());
+                    existing.setAge(demographics.getAge());
+                    existing.setSex(demographics.getSex());
+                    existing.setFullScaleIq(demographics.getFullScaleIq());
+                    existing.setSiteId(demographics.getSiteId());
+                    return patientRepository.save(existing);
+                })
                 .orElseGet(() -> {
                     log.info("[PatientService] Registering net-new patient: {}", demographics.getSubjectId());
                     Patient newPatient = Patient.builder()

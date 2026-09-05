@@ -5,6 +5,8 @@ export default function DemographicsForm({
   demographics,
   onChange,
   onLoadPreset,
+  selectedPreset,
+  sampleCases = [],
   onSubmit,
   isLoading
 }) {
@@ -16,26 +18,34 @@ export default function DemographicsForm({
     });
   };
 
+  const isASDPresetActive = selectedPreset === 'asd_sample';
+  const isControlPresetActive = selectedPreset === 'control_sample';
+
   return (
     <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header & Quick Preset Presets */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <User size={20} color="#818cf8" />
-          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>
-            Patient Phenotypic Profile
-          </h2>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>
+              Patient Phenotypic Profile
+            </h2>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              ABIDE I & II Multimodal Connectome Screening
+            </span>
+          </div>
         </div>
 
-        {/* Presets */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        {/* Quick Presets */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => onLoadPreset('asd_sample')}
             style={{
               padding: '6px 12px',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.35)',
+              backgroundColor: isASDPresetActive ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.12)',
+              border: `1px solid ${isASDPresetActive ? 'rgba(239, 68, 68, 0.7)' : 'rgba(239, 68, 68, 0.3)'}`,
               borderRadius: '8px',
               color: '#fca5a5',
               fontSize: '0.78rem',
@@ -44,7 +54,8 @@ export default function DemographicsForm({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              boxShadow: isASDPresetActive ? '0 0 10px rgba(239, 68, 68, 0.25)' : 'none'
             }}
           >
             <Zap size={13} />
@@ -56,8 +67,8 @@ export default function DemographicsForm({
             onClick={() => onLoadPreset('control_sample')}
             style={{
               padding: '6px 12px',
-              backgroundColor: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
+              backgroundColor: isControlPresetActive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.12)',
+              border: `1px solid ${isControlPresetActive ? 'rgba(16, 185, 129, 0.7)' : 'rgba(16, 185, 129, 0.3)'}`,
               borderRadius: '8px',
               color: '#6ee7b7',
               fontSize: '0.78rem',
@@ -66,7 +77,8 @@ export default function DemographicsForm({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              boxShadow: isControlPresetActive ? '0 0 10px rgba(16, 185, 129, 0.25)' : 'none'
             }}
           >
             <Zap size={13} />
@@ -74,6 +86,39 @@ export default function DemographicsForm({
           </button>
         </div>
       </div>
+
+      {/* Cohort Selector Dropdown for Real ABIDE I Subjects */}
+      {sampleCases && sampleCases.length > 2 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#818cf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <FileText size={13} /> Real ABIDE I Clinical Cohort Samples:
+          </label>
+          <select
+            value={selectedPreset || ''}
+            onChange={(e) => {
+              if (e.target.value) onLoadPreset(e.target.value);
+            }}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              backgroundColor: '#1e293b',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              borderRadius: '8px',
+              color: '#e2e8f0',
+              fontSize: '0.82rem',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="" disabled>Select a genuine ABIDE I subject...</option>
+            {sampleCases.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Form Fields Grid */}
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

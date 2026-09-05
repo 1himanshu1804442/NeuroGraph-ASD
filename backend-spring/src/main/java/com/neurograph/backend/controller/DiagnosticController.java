@@ -72,4 +72,15 @@ public class DiagnosticController {
         DiagnosticResponseDTO report = diagnosticReportService.getReportById(id);
         return ResponseEntity.ok(report);
     }
+
+    /**
+     * DELETE /api/v1/reports
+     * Clears all historical diagnostic reports from the database.
+     */
+    @DeleteMapping("/reports")
+    public ResponseEntity<Void> clearAllReports() {
+        log.info("[DiagnosticController] Received request to clear all diagnostic reports.");
+        diagnosticReportService.clearAllReports();
+        return ResponseEntity.noContent().build();
+    }
 }
