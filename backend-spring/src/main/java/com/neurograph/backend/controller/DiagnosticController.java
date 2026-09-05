@@ -83,4 +83,15 @@ public class DiagnosticController {
         diagnosticReportService.clearAllReports();
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * POST /api/v1/reports/seed
+     * Seeds the full 100-subject ABIDE I benchmark cohort into the database.
+     */
+    @PostMapping("/reports/seed")
+    public ResponseEntity<List<DiagnosticResponseDTO>> seedAbideCohort() {
+        log.info("[DiagnosticController] Received request to seed 100 ABIDE I cohort reports.");
+        List<DiagnosticResponseDTO> reports = diagnosticReportService.seedAbideCohort();
+        return ResponseEntity.ok(reports);
+    }
 }

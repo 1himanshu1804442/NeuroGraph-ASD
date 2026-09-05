@@ -29,6 +29,11 @@ public interface DiagnosticReportRepository extends JpaRepository<DiagnosticRepo
     List<DiagnosticReport> findBySubjectIdOrderByCreatedAtDesc(@Param("subjectId") String subjectId);
 
     /**
+     * Retrieves all reports across the whole clinic ordered newest to oldest.
+     */
+    List<DiagnosticReport> findAllByOrderByCreatedAtDesc();
+
+    /**
      * Retrieves the most recent reports across the whole clinic.
      */
     List<DiagnosticReport> findTop50ByOrderByCreatedAtDesc();

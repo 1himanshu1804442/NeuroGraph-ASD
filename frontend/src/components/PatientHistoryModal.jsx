@@ -43,6 +43,8 @@ export default function PatientHistoryModal({
   onRefresh,
   onClearHistory,
   isClearing = false,
+  onSeedAbide,
+  isSeeding = false,
   onSelectPatient,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -201,6 +203,32 @@ export default function PatientHistoryModal({
               >
                 <Trash2 size={14} />
                 <span>{isClearing ? 'Clearing...' : 'Clear All'}</span>
+              </button>
+            )}
+
+            {onSeedAbide && (
+              <button
+                type="button"
+                onClick={onSeedAbide}
+                disabled={isSeeding}
+                title="Seed / Reload 100 ABIDE I Benchmark Subjects"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  color: '#a5b4fc',
+                  cursor: isSeeding ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Database size={14} />
+                <span>{isSeeding ? 'Loading ABIDE...' : 'Seed 100 ABIDE'}</span>
               </button>
             )}
 
@@ -448,8 +476,32 @@ export default function PatientHistoryModal({
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', maxWidth: '400px' }}>
                 {searchTerm
                   ? `No records match "${searchTerm}". Try resetting search query or filters.`
-                  : 'No historical screenings have been recorded in PostgreSQL yet. Run a screening to save results.'}
+                  : 'No historical screenings have been recorded in PostgreSQL yet. Run a screening or load the ABIDE I benchmark cohort.'}
               </p>
+              {onSeedAbide && safeRecords.length === 0 && (
+                <button
+                  type="button"
+                  onClick={onSeedAbide}
+                  disabled={isSeeding}
+                  style={{
+                    marginTop: '8px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(99, 102, 241, 0.25)',
+                    border: '1px solid rgba(99, 102, 241, 0.5)',
+                    color: '#c7d2fe',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: isSeeding ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <Database size={16} />
+                  <span>{isSeeding ? 'Seeding 100 ABIDE Subjects...' : 'Load 100 ABIDE I Benchmark Subjects'}</span>
+                </button>
+              )}
             </div>
           )}
 

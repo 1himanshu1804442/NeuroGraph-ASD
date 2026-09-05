@@ -27,6 +27,8 @@ export default function Dashboard() {
     refetchHistory,
     handleClearHistory,
     isHistoryClearing,
+    handleSeedAbide,
+    isSeedingAbide,
     isHistoryModalOpen,
     setIsHistoryModalOpen,
     handleSelectHistoricalPatient,
@@ -103,6 +105,8 @@ export default function Dashboard() {
         onRefresh={refetchHistory}
         onClearHistory={handleClearHistory}
         isClearing={isHistoryClearing}
+        onSeedAbide={handleSeedAbide}
+        isSeeding={isSeedingAbide}
         onSelectPatient={handleSelectHistoricalPatient}
       />
     </div>

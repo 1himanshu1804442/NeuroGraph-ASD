@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.neurograph.backend.config.AbideDataSeeder;
+
 /**
  * Service orchestrating the complete clinical diagnostic workflow and report persistence.
  * 
@@ -32,6 +34,7 @@ public class DiagnosticReportService {
     private final InferenceClientService inferenceClientService;
     private final DiagnosticReportRepository diagnosticReportRepository;
     private final ObjectMapper objectMapper;
+    private final AbideDataSeeder abideDataSeeder;
 
     /**
      * Executes end-to-end diagnostic screening:
@@ -114,7 +117,7 @@ public class DiagnosticReportService {
     @Transactional(readOnly = true)
     public List<DiagnosticResponseDTO> getAllReports() {
         log.info("[DiagnosticReportService] Querying all diagnostic reports.");
-        return diagnosticReportRepository.findTop50ByOrderByCreatedAtDesc().stream()
+        return diagnosticReportRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
@@ -151,6 +154,16 @@ public class DiagnosticReportService {
     public void clearAllReports() {
         log.warn("[DiagnosticReportService] Deleting all historical diagnostic reports.");
         diagnosticReportRepository.deleteAll();
+    }
+
+    /**
+     * Seeds the full 100-subject ABIDE I benchmark cohort into PostgreSQL/H2 and returns the populated reports.
+     */
+    @Transactional
+    public List<DiagnosticResponseDTO> seedAbideCohort() {
+        log.info("[DiagnosticReportService] Seeding 100 ABIDE I cohort benchmark subjects into database.");
+        abideDataSeeder.seedCohort();
+        return getAllReports();
     }
 
     /**

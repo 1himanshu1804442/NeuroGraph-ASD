@@ -171,3 +171,27 @@ export async function clearAllDiagnosticReports() {
     throw error;
   }
 }
+
+/**
+ * Seeds the full 100-subject ABIDE I benchmark cohort into PostgreSQL/H2.
+ * Target Endpoint: POST /api/v1/reports/seed
+ * 
+ * @returns {Promise<Array>} List of seeded diagnostic screening reports.
+ */
+export async function seedAbideCohortApi() {
+  try {
+    console.info('[NeuroGraph API] Requesting seed of 100 ABIDE I cohort subjects...');
+    const response = await fetch(`${API_BASE_URL}/v1/reports/seed`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error(`Seed cohort HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.info(`[NeuroGraph API] Successfully seeded ${data.length} ABIDE subjects.`);
+    return data;
+  } catch (error) {
+    console.error('[NeuroGraph API Error] Failed to seed ABIDE cohort:', error);
+    throw error;
+  }
+}

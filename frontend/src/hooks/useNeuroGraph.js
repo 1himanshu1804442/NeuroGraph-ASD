@@ -13,6 +13,7 @@ import {
   predictDiagnosis,
   fetchDiagnosticReports,
   clearAllDiagnosticReports,
+  seedAbideCohortApi,
 } from '../services/api';
 
 // Fallback patient history dataset used when backend database is in bootstrap state or running offline preview
@@ -387,6 +388,19 @@ export function useNeuroGraph() {
     clearReportsMutation.mutate();
   };
 
+  // 6. Seed ABIDE Cohort Mutation
+  const seedCohortMutation = useMutation({
+    mutationFn: seedAbideCohortApi,
+    onSuccess: () => {
+      console.info('[useNeuroGraph] ABIDE cohort successfully seeded.');
+      queryClient.invalidateQueries({ queryKey: ['patientHistory'] });
+    },
+  });
+
+  const handleSeedAbide = () => {
+    seedCohortMutation.mutate();
+  };
+
   return {
     isOnline,
     demographics,
@@ -407,6 +421,8 @@ export function useNeuroGraph() {
     refetchHistory,
     handleClearHistory,
     isHistoryClearing: clearReportsMutation.isPending,
+    handleSeedAbide,
+    isSeedingAbide: seedCohortMutation.isPending,
     isHistoryModalOpen,
     setIsHistoryModalOpen,
     handleSelectHistoricalPatient,
