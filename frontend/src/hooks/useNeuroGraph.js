@@ -12,6 +12,7 @@ import {
   fetchSampleCases,
   predictDiagnosis,
   fetchDiagnosticReports,
+  clearAllDiagnosticReports,
 } from '../services/api';
 
 // Fallback patient history dataset used when backend database is in bootstrap state or running offline preview
