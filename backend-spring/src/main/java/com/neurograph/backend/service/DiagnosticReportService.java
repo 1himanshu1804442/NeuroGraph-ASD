@@ -51,7 +51,23 @@ public class DiagnosticReportService {
         // Step 2: Call Python AI engine for GAT forward pass + XAI graph saliency
         DiagnosticResponseDTO inferenceResult = inferenceClientService.executeInference(request);
 
-        // Step 3: Serialize and persist diagnostic report in PostgreSQL
+        // Step 3: Prevent duplicate persistence on rapid page refreshes (within 15 seconds for the same subject)
+        List<DiagnosticReport> existingReports = diagnosticReportRepository.findBySubjectIdOrderByCreatedAtDesc(patient.getSubjectId());
+        if (!existingReports.isEmpty()) {
+            DiagnosticReport latest = existingReports.get(0);
+            if (latest.getCreatedAt() != null) {
+                long diffSeconds = java.time.Duration.between(latest.getCreatedAt(), java.time.LocalDateTime.now()).abs().toSeconds();
+                if (diffSeconds < 15 && latest.getPredictedClass().equals(inferenceResult.getPredictedClass())) {
+                    log.info("[DiagnosticReportService] Recent report #{} found for subject '{}' ({}s ago). Reusing existing report to avoid reload duplicates.",
+                            latest.getId(), patient.getSubjectId(), diffSeconds);
+                    inferenceResult.setId(latest.getId());
+                    inferenceResult.setCreatedAt(latest.getCreatedAt());
+                    return inferenceResult;
+                }
+            }
+        }
+
+        // Step 4: Serialize and persist diagnostic report in PostgreSQL
         try {
             String pathwaysJson = objectMapper.writeValueAsString(inferenceResult.getTopPathways());
             String networkAttrJson = objectMapper.writeValueAsString(inferenceResult.getNetworkAttribution());

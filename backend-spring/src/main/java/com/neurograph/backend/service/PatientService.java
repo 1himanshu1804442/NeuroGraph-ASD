@@ -96,7 +96,7 @@ public class PatientService {
      * Ensures idempotent patient registration during screening runs.
      */
     @Transactional
-    public Patient findOrCreatePatient(PatientDemographicsDTO demographics) {
+    public synchronized Patient findOrCreatePatient(PatientDemographicsDTO demographics) {
         log.info("[PatientService] Synchronizing patient record for subjectId: {}", demographics.getSubjectId());
         return patientRepository.findBySubjectId(demographics.getSubjectId())
                 .orElseGet(() -> {
