@@ -425,10 +425,28 @@ export default function PatientHistoryModal({
               const sex = item.sex != null ? item.sex : 1;
               const fiq = item.full_scale_iq != null ? item.full_scale_iq : (item.fullScaleIq != null ? item.fullScaleIq : 100);
               const site = item.site_id || item.siteId || 'CLINICAL_CENTER';
-              const diagnosis = item.predicted_label || item.predictedLabel || (item.predicted_class === 1 ? 'Autism Spectrum Disorder' : 'Typical Control');
-              const isASD = item.predicted_class === 1 || item.predictedClass === 1 || diagnosis.toLowerCase().includes('autism');
-              const confidence = item.confidence_percentage ?? (item.asd_probability ? (item.asd_probability * 100).toFixed(1) : (isASD ? '88.4' : '87.5'));
-              const createdAt = item.created_at || item.createdAt || item.timestamp || '2026-08-21';
+              const isASD =
+                item.predicted_class === 1 ||
+                item.predictedClass === 1 ||
+                (item.asd_probability != null && item.asd_probability >= 0.5) ||
+                (item.asdProbability != null && item.asdProbability >= 0.5) ||
+                (item.predicted_label && (item.predicted_label.toLowerCase().includes('autism') || item.predicted_label.toLowerCase().includes('asd'))) ||
+                (item.predictedLabel && (item.predictedLabel.toLowerCase().includes('autism') || item.predictedLabel.toLowerCase().includes('asd')));
+
+              const diagnosis =
+                item.predicted_label ||
+                item.predictedLabel ||
+                (isASD ? 'Autism Spectrum Disorder' : 'Typical Control');
+
+              const rawConfidence =
+                item.confidence_percentage ??
+                item.confidencePercentage ??
+                (item.asd_probability != null ? ((isASD ? item.asd_probability : (1.0 - item.asd_probability)) * 100).toFixed(1) : null) ??
+                (item.asdProbability != null ? ((isASD ? item.asdProbability : (1.0 - item.asdProbability)) * 100).toFixed(1) : null) ??
+                (isASD ? '88.4' : '87.5');
+
+              const confidence = typeof rawConfidence === 'number' ? rawConfidence.toFixed(1) : rawConfidence;
+              const createdAt = item.created_at || item.createdAt || item.timestamp || '2026-09-05';
 
               return (
                 <div

@@ -27,6 +27,18 @@ public class DiagnosticResponseDTO {
     @JsonProperty("subject_id")
     private String subjectId;
 
+    @JsonProperty("age")
+    private Double age;
+
+    @JsonProperty("sex")
+    private Integer sex;
+
+    @JsonProperty("full_scale_iq")
+    private Double fullScaleIq;
+
+    @JsonProperty("site_id")
+    private String siteId;
+
     @JsonProperty("predicted_class")
     private Integer predictedClass;
 

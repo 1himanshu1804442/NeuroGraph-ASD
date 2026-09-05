@@ -11,7 +11,7 @@ import {
   checkHealth,
   fetchSampleCases,
   predictDiagnosis,
-  fetchPatientHistory,
+  fetchDiagnosticReports,
 } from '../services/api';
 
 // Fallback patient history dataset used when backend database is in bootstrap state or running offline preview
@@ -149,7 +149,7 @@ export function useNeuroGraph() {
     retry: 1,
   });
 
-  // 3. PostgreSQL Patient History Query
+  // 3. PostgreSQL Patient Diagnostic History Query
   const {
     data: rawPatientHistory,
     isLoading: isHistoryLoading,
@@ -158,8 +158,8 @@ export function useNeuroGraph() {
     refetch: refetchHistory,
   } = useQuery({
     queryKey: ['patientHistory'],
-    queryFn: fetchPatientHistory,
-    staleTime: 60 * 1000, // 1 minute cache
+    queryFn: fetchDiagnosticReports,
+    staleTime: 30 * 1000,
     retry: 1,
   });
 

@@ -39,4 +39,16 @@ public class PatientResponseDTO {
 
     @JsonProperty("total_reports_count")
     private Integer totalReportsCount;
+
+    @JsonProperty("predicted_class")
+    private Integer predictedClass;
+
+    @JsonProperty("predicted_label")
+    private String predictedLabel;
+
+    @JsonProperty("asd_probability")
+    private Double asdProbability;
+
+    @JsonProperty("confidence_percentage")
+    private Double confidencePercentage;
 }

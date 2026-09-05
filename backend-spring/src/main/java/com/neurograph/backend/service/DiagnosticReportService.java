@@ -150,9 +150,14 @@ public class DiagnosticReportService {
             log.warn("[DiagnosticReportService] Error deserializing JSON report payload: {}", e.getMessage());
         }
 
+        Patient patient = report.getPatient();
         return DiagnosticResponseDTO.builder()
                 .id(report.getId())
-                .subjectId(report.getPatient() != null ? report.getPatient().getSubjectId() : null)
+                .subjectId(patient != null ? patient.getSubjectId() : null)
+                .age(patient != null ? patient.getAge() : null)
+                .sex(patient != null ? patient.getSex() : null)
+                .fullScaleIq(patient != null ? patient.getFullScaleIq() : null)
+                .siteId(patient != null ? patient.getSiteId() : null)
                 .predictedClass(report.getPredictedClass())
                 .predictedLabel(report.getPredictedLabel())
                 .asdProbability(report.getAsdProbability())

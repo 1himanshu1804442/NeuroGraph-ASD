@@ -4,6 +4,7 @@ import com.neurograph.backend.exception.ResourceNotFoundException;
 import com.neurograph.backend.model.dto.PatientDemographicsDTO;
 import com.neurograph.backend.model.dto.PatientRequestDTO;
 import com.neurograph.backend.model.dto.PatientResponseDTO;
+import com.neurograph.backend.model.entity.DiagnosticReport;
 import com.neurograph.backend.model.entity.Patient;
 import com.neurograph.backend.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
@@ -130,6 +131,10 @@ public class PatientService {
      */
     private PatientResponseDTO mapToDTO(Patient patient) {
         int reportCount = (patient.getReports() != null) ? patient.getReports().size() : 0;
+        DiagnosticReport latestReport = (patient.getReports() != null && !patient.getReports().isEmpty())
+                ? patient.getReports().get(patient.getReports().size() - 1)
+                : null;
+
         return PatientResponseDTO.builder()
                 .id(patient.getId())
                 .subjectId(patient.getSubjectId())
@@ -139,6 +144,10 @@ public class PatientService {
                 .siteId(patient.getSiteId())
                 .createdAt(patient.getCreatedAt())
                 .totalReportsCount(reportCount)
+                .predictedClass(latestReport != null ? latestReport.getPredictedClass() : null)
+                .predictedLabel(latestReport != null ? latestReport.getPredictedLabel() : null)
+                .asdProbability(latestReport != null ? latestReport.getAsdProbability() : null)
+                .confidencePercentage(latestReport != null ? latestReport.getConfidencePercentage() : null)
                 .build();
     }
 }
