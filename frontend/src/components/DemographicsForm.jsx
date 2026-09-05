@@ -88,7 +88,7 @@ export default function DemographicsForm({
       </div>
 
       {/* Cohort Selector Dropdown for Real ABIDE I Subjects */}
-      {sampleCases && sampleCases.length > 2 && (
+      {Array.isArray(sampleCases) && sampleCases.length > 2 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#818cf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <FileText size={13} /> Real ABIDE I Clinical Cohort Samples:

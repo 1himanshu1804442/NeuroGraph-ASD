@@ -284,7 +284,8 @@ export function useNeuroGraph() {
     setSelectedPreset(presetId);
 
     // Match against sample cases returned from the backend
-    const matchedSample = sampleCases.find((c) => c.id === presetId);
+    const casesList = Array.isArray(sampleCases) ? sampleCases : (sampleCases?.cases || []);
+    const matchedSample = casesList.find((c) => c.id === presetId);
     let newDemo;
     if (matchedSample && matchedSample.demographics) {
       newDemo = {
