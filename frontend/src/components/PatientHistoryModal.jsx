@@ -60,8 +60,9 @@ export default function PatientHistoryModal({
   }, [isOpen, onClose]);
 
   // Filter records based on search keyword and diagnosis category
+  const safeRecords = Array.isArray(records) ? records : [];
   const filteredRecords = useMemo(() => {
-    return records.filter((item) => {
+    return safeRecords.filter((item) => {
       const subjectId = (item.subject_id || item.subjectId || '').toLowerCase();
       const siteId = (item.site_id || item.siteId || '').toLowerCase();
       const diagnosis = (item.predicted_label || item.predictedLabel || item.diagnosis || '').toLowerCase();
