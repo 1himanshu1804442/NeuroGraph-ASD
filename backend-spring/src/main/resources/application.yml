@@ -40,7 +40,7 @@ server:
 neurograph:
   inference:
     # URL to the FastAPI PyTorch GAT inference microservice
-    base-url: ${PYTHON_ML_BASE_URL:http://localhost:8000/api}
+    base-url: ${PYTHON_ML_BASE_URL:http://localhost:8000}
     connect-timeout-ms: 5000
     read-timeout-ms: 30000
   cors:

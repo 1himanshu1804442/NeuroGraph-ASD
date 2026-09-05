@@ -177,12 +177,15 @@ def predict_diagnosis(request: PredictionRequest):
                     detail=f"Expected ({settings.N_ROIS}, {settings.N_ROIS}) matrix, got {fc_mat.shape}"
                 )
         else:
-            # Generate reproducible rs-fMRI scan from preset profile
-            is_asd_preset = (request.preset_case == "asd_sample")
+            # Generate personalized rs-fMRI scan from patient profile and demographics
+            is_asd_preset = (request.preset_case == "asd_sample") or ("asd" in (request.demographics.subject_id or "").lower())
+            subj_seed_str = f"{request.demographics.subject_id}_{request.demographics.age}_{request.demographics.sex}_{request.demographics.full_scale_iq}_{request.preset_case}"
+            dynamic_seed = abs(hash(subj_seed_str)) % 100000
+
             ts = parcellation_service.generate_synthetic_time_series(
                 n_timepoints=180,
                 is_asd=is_asd_preset,
-                seed=42 if is_asd_preset else 999
+                seed=dynamic_seed
             )
             fc_mat = compute_functional_connectivity(ts, apply_fisher_z=True)
 

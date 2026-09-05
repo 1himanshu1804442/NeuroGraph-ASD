@@ -171,14 +171,32 @@ export function useNeuroGraph() {
 
   // Fallback mock generator in case the server is offline during development/preview
   const generateFallbackResult = (presetId, demoData) => {
-    const isASD = presetId === 'asd_sample' || presetId === 'ASD' || (demoData.subject_id && demoData.subject_id.toLowerCase().includes('asd'));
+    const isASDPreset = presetId === 'asd_sample' || presetId === 'ASD';
+    const age = demoData.age != null ? Number(demoData.age) : 10.0;
+    const sex = demoData.sex != null ? Number(demoData.sex) : 1;
+    const fiq = demoData.full_scale_iq != null ? Number(demoData.full_scale_iq) : 100.0;
+    
+    // Dynamic demographic calculation
+    const basePrior = isASDPreset ? 0.74 : (presetId === 'control_sample' ? 0.24 : 0.50);
+    const sexFactor = sex === 1 ? 0.05 : -0.05;
+    const ageFactor = (11.5 - age) * 0.018;
+    const iqFactor = (100.0 - fiq) * 0.0035;
+    const hash = (demoData.subject_id || 'PATIENT').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const variance = ((hash % 100) - 50) / 600.0;
+
+    const rawProb = Math.max(0.04, Math.min(0.96, basePrior + sexFactor + ageFactor + iqFactor + variance));
+    const asd_probability = Math.round(rawProb * 1000) / 1000;
+    const control_probability = Math.round((1.0 - asd_probability) * 1000) / 1000;
+    const isASD = asd_probability >= 0.50;
+    const confidence_percentage = Math.round((isASD ? asd_probability : control_probability) * 1000) / 10;
+
     return {
       subject_id: demoData.subject_id,
       predicted_class: isASD ? 1 : 0,
       predicted_label: isASD ? 'Autism Spectrum Disorder' : 'Typical Control',
-      asd_probability: isASD ? 0.884 : 0.125,
-      control_probability: isASD ? 0.116 : 0.875,
-      confidence_percentage: isASD ? 88.4 : 87.5,
+      asd_probability,
+      control_probability,
+      confidence_percentage,
       top_pathways: [
         {
           source_name: 'Cingulate_Post_L',
@@ -293,9 +311,13 @@ export function useNeuroGraph() {
   // Handler to run inference on custom form submission
   const handleFormSubmit = (e) => {
     if (e) e.preventDefault();
+    const isExactPreset =
+      (selectedPreset === 'asd_sample' && demographics.subject_id === 'PEDIATRIC_ASD_01') ||
+      (selectedPreset === 'control_sample' && demographics.subject_id === 'CONTROL_TC_01');
+
     predictMutation.mutate({
       demographics,
-      preset_case: selectedPreset,
+      preset_case: isExactPreset ? selectedPreset : null,
     });
   };
 
