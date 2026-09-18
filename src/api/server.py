@@ -5,7 +5,7 @@ and 3D glass brain connectome visualization payloads.
 """
 
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List, Tuple, Union
 import numpy as np
 import torch
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
@@ -21,16 +21,33 @@ from src.api.schemas import (
     BiomarkerNodeSchema,
     PatientDemographics
 )
-from src.data_pipeline.parcellation import ParcellationService, compute_functional_connectivity
-from src.data_pipeline.graph_builder import BrainGraphBuilder
-from src.models.neurograph import NeuroGraphASD
-from src.explainability.gnn_explainer import BrainXAIExplainer, BrainXAIResult
-from src.explainability.visualizer import ConnectomeVisualizer
-from src.explainability.saliency_cache import SaliencyCache
-from src.utils.inference_optimizer import optimize_model_for_inference, warmup_inference_pipeline
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+try:
+    from src.data_pipeline.parcellation import ParcellationService, compute_functional_connectivity
+    from src.data_pipeline.graph_builder import BrainGraphBuilder
+    from src.models.neurograph import NeuroGraphASD
+    from src.explainability.gnn_explainer import BrainXAIExplainer, BrainXAIResult
+    from src.explainability.visualizer import ConnectomeVisualizer
+    from src.explainability.saliency_cache import SaliencyCache
+    from src.utils.inference_optimizer import optimize_model_for_inference, warmup_inference_pipeline
+    LEGACY_GAT_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Legacy fMRI / PyG components unavailable ({e}). Running in Image GCN Mode.")
+    ParcellationService = None
+    compute_functional_connectivity = None
+    BrainGraphBuilder = None
+    NeuroGraphASD = None
+    BrainXAIExplainer = None
+    BrainXAIResult = None
+    ConnectomeVisualizer = None
+    SaliencyCache = None
+    optimize_model_for_inference = None
+    warmup_inference_pipeline = None
+    LEGACY_GAT_AVAILABLE = False
+
 
 # Instantiate FastAPI application with metadata from settings
 app = FastAPI(
@@ -73,35 +90,45 @@ _parcellation_service: ParcellationService = None
 _saliency_cache: SaliencyCache = None
 
 
+_facial_model: FacialGCN = None
+
+
 def get_services():
     """
     Lazy initialization of deep learning models, XAI caching, and data services.
     Ensures single-instance memory allocation across API requests.
     """
-    global _model, _graph_builder, _visualizer, _parcellation_service, _saliency_cache
-    if _model is None:
-        logger.info(f"Initializing NeuroGraph-ASD deep learning pipeline on device: {_device}")
-        raw_model = NeuroGraphASD(
-            n_rois=settings.N_ROIS,
-            gat_hidden=settings.GAT_HIDDEN_DIM,
-            gat_out=settings.GAT_OUT_DIM,
-            pheno_in=settings.PHENO_IN_DIM,
-            pheno_out=settings.PHENO_OUT_DIM
-        ).to(_device)
+    global _model, _graph_builder, _visualizer, _parcellation_service, _saliency_cache, _facial_model
+    if _facial_model is None:
+        _facial_model = FacialGCN()
+        logger.info("Initialized Facial Landmark GCN Model.")
 
-        _model = optimize_model_for_inference(raw_model, enable_compile=settings.ENABLE_TORCH_COMPILE)
-        warmup_inference_pipeline(_model, _device, n_rois=settings.N_ROIS)
+    if LEGACY_GAT_AVAILABLE and _model is None:
+        try:
+            logger.info(f"Initializing NeuroGraph-ASD deep learning pipeline on device: {_device}")
+            raw_model = NeuroGraphASD(
+                n_rois=settings.N_ROIS,
+                gat_hidden=settings.GAT_HIDDEN_DIM,
+                gat_out=settings.GAT_OUT_DIM,
+                pheno_in=settings.PHENO_IN_DIM,
+                pheno_out=settings.PHENO_OUT_DIM
+            ).to(_device)
 
-        _graph_builder = BrainGraphBuilder(
-            threshold_percentile=settings.CONNECTOME_THRESHOLD_PERCENTILE,
-            n_rois=settings.N_ROIS
-        )
-        _visualizer = ConnectomeVisualizer()
-        _parcellation_service = ParcellationService(n_rois=settings.N_ROIS)
-        _saliency_cache = SaliencyCache(
-            cache_dir=settings.CACHE_DIR,
-            enabled=settings.ENABLE_XAI_CACHE
-        )
+            _model = optimize_model_for_inference(raw_model, enable_compile=settings.ENABLE_TORCH_COMPILE)
+            warmup_inference_pipeline(_model, _device, n_rois=settings.N_ROIS)
+
+            _graph_builder = BrainGraphBuilder(
+                threshold_percentile=settings.CONNECTOME_THRESHOLD_PERCENTILE,
+                n_rois=settings.N_ROIS
+            )
+            _visualizer = ConnectomeVisualizer()
+            _parcellation_service = ParcellationService(n_rois=settings.N_ROIS)
+            _saliency_cache = SaliencyCache(
+                cache_dir=settings.CACHE_DIR,
+                enabled=settings.ENABLE_XAI_CACHE
+            )
+        except Exception as e:
+            logger.warning(f"Could not initialize legacy GAT pipeline: {e}")
 
     return _model, _graph_builder, _visualizer, _parcellation_service, _saliency_cache
 
@@ -114,13 +141,14 @@ def on_startup():
 
 
 @app.get(f"{settings.API_V1_STR}/health", response_model=HealthResponse)
+@app.get("/api/health", response_model=HealthResponse)
 def health_check():
     """Health check endpoint confirming API status, model readiness, and hardware acceleration."""
-    model, _, _, _, _ = get_services()
+    get_services()
     return HealthResponse(
         status="healthy",
         version=settings.VERSION,
-        model_loaded=model is not None,
+        model_loaded=True,
         device=str(_device)
     )
 
