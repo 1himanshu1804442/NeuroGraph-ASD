@@ -2,14 +2,17 @@ package com.neurograph.backend.controller;
 
 import com.neurograph.backend.model.dto.DiagnosticRequestDTO;
 import com.neurograph.backend.model.dto.DiagnosticResponseDTO;
+import com.neurograph.backend.model.dto.PatientDemographicsDTO;
 import com.neurograph.backend.model.dto.SampleCasesResponseDTO;
 import com.neurograph.backend.service.DiagnosticReportService;
 import com.neurograph.backend.service.InferenceClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -37,6 +40,49 @@ public class DiagnosticController {
         log.info("[DiagnosticController] Received screening request for subjectId: {}",
                 request.getDemographics().getSubjectId());
         DiagnosticResponseDTO response = diagnosticReportService.runDiagnosticInference(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/v1/predict/image
+     * Executes image-based facial GCN inference, phenotypic landmark extraction, and report persistence.
+     */
+    @PostMapping(value = "/predict/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<DiagnosticResponseDTO> predictImageDiagnosis(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "subjectId", required = false) String subjectId,
+            @RequestParam(value = "age", required = false) Double age,
+            @RequestParam(value = "sex", required = false) Integer sex,
+            @RequestParam(value = "fullScaleIq", required = false) Double fullScaleIq,
+            @RequestParam(value = "siteId", required = false) String siteId) {
+
+        log.info("[DiagnosticController] Received image screening request for subjectId: {}, fileName: {}, size: {} bytes",
+                subjectId, file != null ? file.getOriginalFilename() : "null", file != null ? file.getSize() : 0);
+
+        if (file == null || file.isEmpty()) {
+            log.error("[DiagnosticController] Uploaded image file is empty or missing.");
+            throw new IllegalArgumentException("Image file must not be empty.");
+        }
+
+        String effectiveSubjectId = (subjectId != null && !subjectId.trim().isEmpty())
+                ? subjectId.trim()
+                : "IMG_PATIENT_" + (System.currentTimeMillis() % 100000);
+        Double effectiveAge = (age != null) ? age : 10.0;
+        Integer effectiveSex = (sex != null) ? sex : 1;
+        Double effectiveFiq = (fullScaleIq != null) ? fullScaleIq : 100.0;
+        String effectiveSiteId = (siteId != null && !siteId.trim().isEmpty())
+                ? siteId.trim()
+                : "FACIAL_PHENOTYPE_CLINIC";
+
+        PatientDemographicsDTO demographics = PatientDemographicsDTO.builder()
+                .subjectId(effectiveSubjectId)
+                .age(effectiveAge)
+                .sex(effectiveSex)
+                .fullScaleIq(effectiveFiq)
+                .siteId(effectiveSiteId)
+                .build();
+
+        DiagnosticResponseDTO response = diagnosticReportService.runImageDiagnosticInference(file, demographics);
         return ResponseEntity.ok(response);
     }
 

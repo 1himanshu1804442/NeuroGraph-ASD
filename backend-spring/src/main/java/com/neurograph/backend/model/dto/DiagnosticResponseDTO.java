@@ -66,6 +66,12 @@ public class DiagnosticResponseDTO {
     @JsonProperty("connectome_graph")
     private Map<String, Object> connectomeGraph;
 
+    @JsonProperty("image_thumbnail_base64")
+    private String imageThumbnailBase64;
+
+    @JsonProperty("facial_landmarks")
+    private List<Map<String, Object>> facialLandmarks;
+
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
 }

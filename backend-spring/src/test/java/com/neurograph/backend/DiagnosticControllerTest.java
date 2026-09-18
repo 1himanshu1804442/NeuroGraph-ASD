@@ -15,7 +15,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,6 +26,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -48,6 +51,7 @@ class DiagnosticControllerTest {
     private InferenceClientService inferenceClientService;
 
     private DiagnosticResponseDTO sampleResponse;
+    private DiagnosticResponseDTO sampleImageResponse;
     private DiagnosticRequestDTO sampleRequest;
 
     @BeforeEach
@@ -91,6 +95,41 @@ class DiagnosticControllerTest {
                 ))
                 .networkAttribution(Map.of("Default Mode Network", 0.45, "Salience Network", 0.35))
                 .connectomeGraph(Map.of("nodes", List.of(), "edges", List.of()))
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        sampleImageResponse = DiagnosticResponseDTO.builder()
+                .id(2L)
+                .subjectId("PATIENT_IMG_001")
+                .age(10.5)
+                .sex(1)
+                .fullScaleIq(105.0)
+                .siteId("NYU_CLINIC")
+                .predictedClass(1)
+                .predictedLabel("Autism Spectrum Disorder")
+                .asdProbability(0.88)
+                .controlProbability(0.12)
+                .confidencePercentage(88.0)
+                .topPathways(List.of(
+                        SaliencyPathwayDTO.builder()
+                                .sourceName("Right_Canthus_36")
+                                .targetName("Left_Canthus_45")
+                                .saliencyScore(0.912)
+                                .functionalNetwork("Periorbital / Ocular Symmetry")
+                                .build()
+                ))
+                .facialLandmarks(List.of(
+                        Map.of("index", 0, "x", 0.24, "y", 0.38, "region", "Jaw"),
+                        Map.of("index", 36, "x", 0.32, "y", 0.36, "region", "Right Eye")
+                ))
+                .imageThumbnailBase64("data:image/jpeg;base64,dGVzdA==")
+                .networkAttribution(Map.of(
+                        "Periorbital / Ocular Symmetry", 35.0,
+                        "Mid-face & Nasal Morphology", 27.0,
+                        "Oral / Philtrum Dynamics", 21.0,
+                        "Lower Facial Contour", 17.0
+                ))
+                .connectomeGraph(Map.of("nodes", List.of(), "links", List.of()))
                 .createdAt(LocalDateTime.now())
                 .build();
     }
@@ -190,5 +229,66 @@ class DiagnosticControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Diagnostic report not found with id: 999"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/predict/image with valid image and demographics should return 200 OK and facial GCN prediction")
+    void predictImageDiagnosis_ValidImageAndDemographics_ReturnsOk() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "patient_face.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "dummy-facial-image-binary-data".getBytes()
+        );
+
+        when(diagnosticReportService.runImageDiagnosticInference(any(MultipartFile.class), any(PatientDemographicsDTO.class)))
+                .thenReturn(sampleImageResponse);
+
+        mockMvc.perform(multipart("/api/v1/predict/image")
+                        .file(file)
+                        .param("subjectId", "PATIENT_IMG_001")
+                        .param("age", "10.5")
+                        .param("sex", "1")
+                        .param("fullScaleIq", "105.0")
+                        .param("siteId", "NYU_CLINIC"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.subject_id").value("PATIENT_IMG_001"))
+                .andExpect(jsonPath("$.predicted_class").value(1))
+                .andExpect(jsonPath("$.predicted_label").value("Autism Spectrum Disorder"))
+                .andExpect(jsonPath("$.confidence_percentage").value(88.0))
+                .andExpect(jsonPath("$.facial_landmarks").isArray())
+                .andExpect(jsonPath("$.facial_landmarks[0].region").value("Jaw"))
+                .andExpect(jsonPath("$.top_pathways").isArray())
+                .andExpect(jsonPath("$.top_pathways[0].source_name").value("Right_Canthus_36"))
+                .andExpect(jsonPath("$.top_pathways[0].functional_network").value("Periorbital / Ocular Symmetry"))
+                .andExpect(jsonPath("$.image_thumbnail_base64").value("data:image/jpeg;base64,dGVzdA=="))
+                .andExpect(jsonPath("$.network_attribution['Periorbital / Ocular Symmetry']").value(35.0));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/predict/image with empty file should return 400 Bad Request")
+    void predictImageDiagnosis_EmptyFile_Returns400BadRequest() throws Exception {
+        MockMultipartFile emptyFile = new MockMultipartFile(
+                "file",
+                "empty.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                new byte[0]
+        );
+
+        mockMvc.perform(multipart("/api/v1/predict/image")
+                        .file(emptyFile)
+                        .param("subjectId", "PATIENT_IMG_001"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Image file must not be empty."));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/predict/image with missing file part should return 4xx Client Error")
+    void predictImageDiagnosis_MissingFile_Returns4xxClientError() throws Exception {
+        mockMvc.perform(multipart("/api/v1/predict/image")
+                        .param("subjectId", "PATIENT_IMG_001"))
+                .andExpect(status().is4xxClientError());
     }
 }

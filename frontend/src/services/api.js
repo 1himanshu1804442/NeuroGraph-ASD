@@ -195,3 +195,43 @@ export async function seedAbideCohortApi() {
     throw error;
   }
 }
+
+/**
+ * Submits facial portrait image (multipart/form-data) for 68-point facial landmark extraction,
+ * GCN spatial graph classification, and Grad-CAM class activation explainability.
+ * Target Endpoint: POST /api/v1/predict/image
+ * 
+ * Why: We send multipart/form-data directly using FormData without setting a manual
+ * 'Content-Type' header, allowing the browser's fetch API to automatically populate
+ * the multipart boundary parameter needed by Spring Boot / FastAPI servers.
+ * 
+ * @param {FormData} formData - Multipart form data containing the image file under 'file' or 'image' key.
+ * @returns {Promise<Object>} Diagnostic screening prediction, 68 landmarks, GCN saliency edges, and Grad-CAM data.
+ */
+export async function predictImageDiagnosis(formData) {
+  try {
+    console.info('[NeuroGraph API] Submitting facial portrait image for GCN diagnostic inference...');
+    const response = await fetch(`${API_BASE_URL}/v1/predict/image`, {
+      method: 'POST',
+      // Note: Do NOT set 'Content-Type' header here; fetch sets boundary automatically for FormData
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Image Inference HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.info(
+      '[NeuroGraph API] Facial GCN image inference successful:',
+      data.predicted_label || data.predictedLabel,
+      `(${data.confidence_percentage ?? (data.asd_probability ? (data.asd_probability * 100).toFixed(1) : 'N/A')}%)`
+    );
+    return data;
+  } catch (error) {
+    console.error('[NeuroGraph API Error] Facial image diagnostic inference failed:', error);
+    throw error;
+  }
+}
+

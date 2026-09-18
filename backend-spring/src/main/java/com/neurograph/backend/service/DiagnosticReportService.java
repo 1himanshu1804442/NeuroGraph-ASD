@@ -11,7 +11,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -104,6 +106,93 @@ public class DiagnosticReportService {
     }
 
     /**
+     * Executes end-to-end image-based diagnostic inference:
+     * 1. Validates the uploaded facial image is non-empty.
+     * 2. Synchronizes patient demographics record in PostgreSQL.
+     * 3. Converts the image into a base64 thumbnail string for persistence & UI rendering.
+     * 4. Forwards to InferenceClientService (Python AI engine or embedded Facial GCN phenotypic engine).
+     * 5. Persists the DiagnosticReport entity with landmarks and thumbnail in PostgreSQL.
+     * 6. Returns enriched DiagnosticResponseDTO.
+     */
+    @Transactional
+    public DiagnosticResponseDTO runImageDiagnosticInference(MultipartFile file, PatientDemographicsDTO demo) {
+        log.info("[DiagnosticReportService] Starting image-based facial GCN screening for subjectId: {}",
+                demo != null ? demo.getSubjectId() : "UNKNOWN");
+
+        if (file == null || file.isEmpty()) {
+            log.error("[DiagnosticReportService] Image file is missing or empty.");
+            throw new IllegalArgumentException("Image file must not be empty.");
+        }
+
+        // Step 1: Save or synchronize patient demographic record in PostgreSQL
+        Patient patient = patientService.findOrCreatePatient(demo);
+
+        // Step 2: Convert image to base64 thumbnail for persistence and UI rendering
+        String thumbnailBase64 = encodeImageToBase64Thumbnail(file);
+
+        // Step 3: Call AI Engine / embedded Facial GCN phenotypic engine
+        DiagnosticResponseDTO inferenceResult = inferenceClientService.executeImageInference(file, demo);
+        inferenceResult.setImageThumbnailBase64(thumbnailBase64);
+        inferenceResult.setSubjectId(patient.getSubjectId());
+        inferenceResult.setAge(patient.getAge());
+        inferenceResult.setSex(patient.getSex());
+        inferenceResult.setFullScaleIq(patient.getFullScaleIq());
+        inferenceResult.setSiteId(patient.getSiteId());
+
+        // Step 4: Serialize and persist diagnostic report in PostgreSQL
+        try {
+            String pathwaysJson = objectMapper.writeValueAsString(inferenceResult.getTopPathways());
+            String networkAttrJson = objectMapper.writeValueAsString(inferenceResult.getNetworkAttribution());
+            String biomarkerRoisJson = objectMapper.writeValueAsString(inferenceResult.getTopBiomarkerRois());
+            String facialLandmarksJson = objectMapper.writeValueAsString(inferenceResult.getFacialLandmarks());
+
+            DiagnosticReport report = DiagnosticReport.builder()
+                    .patient(patient)
+                    .predictedClass(inferenceResult.getPredictedClass())
+                    .predictedLabel(inferenceResult.getPredictedLabel())
+                    .asdProbability(inferenceResult.getAsdProbability())
+                    .controlProbability(inferenceResult.getControlProbability())
+                    .confidencePercentage(inferenceResult.getConfidencePercentage())
+                    .saliencyPathwaysJson(pathwaysJson)
+                    .networkAttributionJson(networkAttrJson)
+                    .biomarkerRoisJson(biomarkerRoisJson)
+                    .imageThumbnailBase64(thumbnailBase64)
+                    .facialLandmarksJson(facialLandmarksJson)
+                    .build();
+
+            DiagnosticReport savedReport = diagnosticReportRepository.save(report);
+            log.info("[DiagnosticReportService] Persisted facial GCN diagnostic report #{} for patient '{}'",
+                    savedReport.getId(), patient.getSubjectId());
+
+            // Attach database ID and createdAt to response
+            inferenceResult.setId(savedReport.getId());
+            inferenceResult.setCreatedAt(savedReport.getCreatedAt());
+
+        } catch (Exception e) {
+            log.error("[DiagnosticReportService] Failed to serialize or persist facial GCN diagnostic report: {}", e.getMessage(), e);
+        }
+
+        return inferenceResult;
+    }
+
+    /**
+     * Helper method to convert an uploaded image to a standard Base64 Data URI thumbnail.
+     */
+    private String encodeImageToBase64Thumbnail(MultipartFile file) {
+        try {
+            byte[] bytes = file.getBytes();
+            String contentType = file.getContentType();
+            if (contentType == null || contentType.isBlank()) {
+                contentType = "image/jpeg";
+            }
+            return "data:" + contentType + ";base64," + Base64.getEncoder().encodeToString(bytes);
+        } catch (Exception e) {
+            log.error("[DiagnosticReportService] Error encoding image to base64 thumbnail: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
      * Alias for runDiagnosticInference to maintain backward compatibility.
      */
     @Transactional
@@ -173,6 +262,7 @@ public class DiagnosticReportService {
         List<SaliencyPathwayDTO> pathways = Collections.emptyList();
         Map<String, Double> networkAttr = Collections.emptyMap();
         List<BiomarkerRoiDTO> biomarkers = Collections.emptyList();
+        List<Map<String, Object>> landmarks = Collections.emptyList();
 
         try {
             if (report.getSaliencyPathwaysJson() != null) {
@@ -183,6 +273,9 @@ public class DiagnosticReportService {
             }
             if (report.getBiomarkerRoisJson() != null) {
                 biomarkers = objectMapper.readValue(report.getBiomarkerRoisJson(), new TypeReference<List<BiomarkerRoiDTO>>() {});
+            }
+            if (report.getFacialLandmarksJson() != null) {
+                landmarks = objectMapper.readValue(report.getFacialLandmarksJson(), new TypeReference<List<Map<String, Object>>>() {});
             }
         } catch (Exception e) {
             log.warn("[DiagnosticReportService] Error deserializing JSON report payload: {}", e.getMessage());
@@ -204,6 +297,8 @@ public class DiagnosticReportService {
                 .topPathways(pathways)
                 .networkAttribution(networkAttr)
                 .topBiomarkerRois(biomarkers)
+                .imageThumbnailBase64(report.getImageThumbnailBase64())
+                .facialLandmarks(landmarks)
                 .createdAt(report.getCreatedAt())
                 .build();
     }

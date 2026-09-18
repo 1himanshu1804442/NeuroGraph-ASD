@@ -1,8 +1,10 @@
 /**
  * Custom React Hook for NeuroGraph-ASD Clinical Workflow.
- * Leverages TanStack React Query for background health polling,
- * query caching, diagnostic mutation lifecycle, PostgreSQL patient registry
- * querying, and robust state management.
+ * 
+ * Why: Encapsulates TanStack React Query hooks for background health polling,
+ * fMRI connectome inference, PostgreSQL patient registry management, and the
+ * multimodal Image-Based Autism Detection pipeline (68-point Facial Landmark Graph
+ * and Grad-CAM explainability).
  */
 
 import { useState } from 'react';
@@ -11,10 +13,17 @@ import {
   checkHealth,
   fetchSampleCases,
   predictDiagnosis,
+  predictImageDiagnosis,
   fetchDiagnosticReports,
   clearAllDiagnosticReports,
   seedAbideCohortApi,
 } from '../services/api';
+import {
+  PRESET_SAMPLE_PORTRAITS,
+  createSamplePortraitFile,
+  generateImageFallbackResult,
+  CANONICAL_68_LANDMARKS,
+} from '../services/facialBiomarkers';
 
 // Fallback patient history dataset used when backend database is in bootstrap state or running offline preview
 const FALLBACK_PATIENT_HISTORY = [
@@ -111,13 +120,11 @@ const FALLBACK_PATIENT_HISTORY = [
 export function useNeuroGraph() {
   const queryClient = useQueryClient();
 
-  // Selected Preset state
+  // -------------------------------------------------------------
+  // Connectome & Phenotypic State
+  // -------------------------------------------------------------
   const [selectedPreset, setSelectedPreset] = useState('asd_sample');
-
-  // Modal open/close state for historical patient records
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-
-  // Demographics form state
   const [demographics, setDemographics] = useState({
     subject_id: 'PEDIATRIC_ASD_01',
     age: 9.5,
@@ -127,13 +134,21 @@ export function useNeuroGraph() {
   });
 
   // Client-side prediction result store (holds latest server result or fallback)
-  const [predictionResult, setPredictionResult] = useState(null);
+  const [predictionResult, setPredictionResult] = useState(() => generateImageFallbackResult('pediatric_asd'));
+
+  // -------------------------------------------------------------
+  // Image-Based Facial GCN Screening State (Requirement 5)
+  // -------------------------------------------------------------
+  const [selectedPortraitPresetId, setSelectedPortraitPresetId] = useState('pediatric_asd');
+  const [uploadedImageFile, setUploadedImageFile] = useState(() => createSamplePortraitFile('pediatric_asd'));
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(() => PRESET_SAMPLE_PORTRAITS[0].imageUrl);
+  const [activeVisionTab, setActiveVisionTab] = useState('landmarks'); // 'landmarks' | 'gradcam'
+  const [imagePredictionResult, setImagePredictionResult] = useState(() => generateImageFallbackResult('pediatric_asd'));
 
   // 1. Health Status Query
   const {
     data: healthData,
     isSuccess: isHealthSuccess,
-    isError: isHealthError,
   } = useQuery({
     queryKey: ['systemHealth'],
     queryFn: checkHealth,
@@ -218,18 +233,6 @@ export function useNeuroGraph() {
           saliency_score: 0.812,
           functional_network: 'Salience Network',
         },
-        {
-          source_name: 'Hippocampus_R',
-          target_name: 'Precuneus_L',
-          saliency_score: 0.745,
-          functional_network: 'Default Mode Network (DMN)',
-        },
-        {
-          source_name: 'Parietal_Sup_L',
-          target_name: 'Temporal_Sup_R',
-          saliency_score: 0.684,
-          functional_network: 'Frontoparietal / Executive',
-        },
       ],
       top_biomarker_rois: [
         { roi_index: 35, name: 'Cingulate_Post_L', importance: 3.45 },
@@ -264,13 +267,12 @@ export function useNeuroGraph() {
     };
   };
 
-  // 4. Diagnostic Inference Mutation
+  // 4. Connectome Diagnostic Inference Mutation
   const predictMutation = useMutation({
     mutationFn: predictDiagnosis,
     onSuccess: (data) => {
-      console.info('[useNeuroGraph] Inference succeeded for:', data.subject_id);
+      console.info('[useNeuroGraph] Connectome inference succeeded for:', data.subject_id);
       setPredictionResult(data);
-      // Invalidate patient history cache so newly stored patient screening is fetched
       queryClient.invalidateQueries({ queryKey: ['patientHistory'] });
     },
     onError: (error, variables) => {
@@ -280,12 +282,100 @@ export function useNeuroGraph() {
     },
   });
 
-  // Handler to switch clinical preset profiles
+  // 5. Facial Image GCN Inference Mutation (Requirement 5)
+  const predictImageMutation = useMutation({
+    mutationFn: predictImageDiagnosis,
+    onSuccess: (data) => {
+      console.info('[useNeuroGraph] Facial image GCN inference succeeded for:', data.subject_id);
+      setImagePredictionResult(data);
+      setPredictionResult(data);
+      queryClient.invalidateQueries({ queryKey: ['patientHistory'] });
+    },
+    onError: (error) => {
+      console.warn('[useNeuroGraph] Backend image endpoint offline/bootstrap, activating rich clinical fallback:', error);
+      const fallback = generateImageFallbackResult(selectedPortraitPresetId, uploadedImageFile);
+      setImagePredictionResult(fallback);
+      setPredictionResult(fallback);
+    },
+  });
+
+  /**
+   * Handles user portrait file upload via drag-and-drop or file picker.
+   * Why: Reads custom patient photography as a data URL for instantaneous preview
+   * and prepares the file object for multipart/form-data upload.
+   */
+  const handleImageUpload = (file) => {
+    if (!file) return;
+    console.info('[useNeuroGraph] Processing uploaded patient portrait:', file.name, `(${file.size} bytes)`);
+    setUploadedImageFile(file);
+    setSelectedPortraitPresetId('custom');
+
+    // Read file as Data URL for canvas and preview display
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreviewUrl(e.target.result);
+      const fallback = generateImageFallbackResult('custom', file);
+      setImagePredictionResult(fallback);
+      setPredictionResult(fallback);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /**
+   * Switches to a preconfigured clinical sample portrait (e.g. Pediatric ASD, Control, Adolescent ASD).
+   * Why: Enables instant 1-click evaluation of the GCN facial landmark pipeline.
+   */
+  const handleSamplePortraitSelect = (sampleId) => {
+    console.info('[useNeuroGraph] Selected preset sample portrait:', sampleId);
+    setSelectedPortraitPresetId(sampleId);
+    const sample = PRESET_SAMPLE_PORTRAITS.find((s) => s.id === sampleId) || PRESET_SAMPLE_PORTRAITS[0];
+    setImagePreviewUrl(sample.imageUrl);
+
+    const sampleFile = createSamplePortraitFile(sampleId);
+    setUploadedImageFile(sampleFile);
+
+    // Populate immediate visual fallback result
+    const fallbackResult = generateImageFallbackResult(sampleId, sampleFile);
+    setImagePredictionResult(fallbackResult);
+    setPredictionResult(fallbackResult);
+  };
+
+  /**
+   * Clears currently loaded image to return to upload dropzone state.
+   */
+  const handleClearImage = () => {
+    setUploadedImageFile(null);
+    setImagePreviewUrl(null);
+    setSelectedPortraitPresetId(null);
+  };
+
+  /**
+   * Triggers the GCN facial screening inference.
+   * Why: Packages the portrait into a FormData multipart request.
+   */
+  const handleRunImageInference = () => {
+    if (!uploadedImageFile && !imagePreviewUrl) {
+      console.warn('[useNeuroGraph] Cannot run facial screening without an uploaded portrait.');
+      return;
+    }
+
+    const formData = new FormData();
+    if (uploadedImageFile) {
+      formData.append('file', uploadedImageFile);
+      formData.append('image', uploadedImageFile);
+    }
+    if (selectedPortraitPresetId) {
+      formData.append('preset_id', selectedPortraitPresetId);
+    }
+
+    predictImageMutation.mutate(formData);
+  };
+
+  // Handler to switch clinical preset profiles (Connectome)
   const handlePresetSelect = (presetIdOrObject) => {
     const presetId = typeof presetIdOrObject === 'string' ? presetIdOrObject : presetIdOrObject?.id;
     setSelectedPreset(presetId);
 
-    // Match against sample cases returned from the backend
     const casesList = Array.isArray(sampleCases) ? sampleCases : (sampleCases?.cases || []);
     const matchedSample = casesList.find((c) => c.id === presetId);
     let newDemo;
@@ -316,7 +406,6 @@ export function useNeuroGraph() {
     }
     setDemographics(newDemo);
 
-    // Trigger immediate inference for the selected preset
     predictMutation.mutate({
       demographics: newDemo,
       preset_case: presetId,
@@ -326,7 +415,6 @@ export function useNeuroGraph() {
   // Handler to run inference on custom form submission
   const handleFormSubmit = (e) => {
     if (e) e.preventDefault();
-    // Custom form submissions evaluate exact entered parameters dynamically
     predictMutation.mutate({
       demographics,
       preset_case: null,
@@ -357,8 +445,10 @@ export function useNeuroGraph() {
       record.predictedClass === 1 ||
       (record.predicted_label && record.predicted_label.toLowerCase().includes('autism'));
 
-    // Populate prediction result view
-    if (record.connectome_graph && record.top_pathways) {
+    if (record.landmarks_68 || record.gcn_saliency_edges) {
+      setImagePredictionResult(record);
+      setPredictionResult(record);
+    } else if (record.connectome_graph && record.top_pathways) {
       setPredictionResult(record);
     } else {
       const fallback = generateFallbackResult(isASD ? 'asd_sample' : 'control_sample', newDemo);
@@ -375,7 +465,7 @@ export function useNeuroGraph() {
     }
   };
 
-  // 5. Clear Patient Reports Mutation
+  // 6. Clear Patient Reports Mutation
   const clearReportsMutation = useMutation({
     mutationFn: clearAllDiagnosticReports,
     onSuccess: () => {
@@ -388,7 +478,7 @@ export function useNeuroGraph() {
     clearReportsMutation.mutate();
   };
 
-  // 6. Seed ABIDE Cohort Mutation
+  // 7. Seed ABIDE Cohort Mutation
   const seedCohortMutation = useMutation({
     mutationFn: seedAbideCohortApi,
     onSuccess: () => {
@@ -410,9 +500,12 @@ export function useNeuroGraph() {
     handleFormSubmit,
     predictionResult,
     setPredictionResult,
-    isLoading: predictMutation.isPending,
-    errorMessage: predictMutation.error ? predictMutation.error.message : null,
+    isLoading: predictMutation.isPending || predictImageMutation.isPending,
+    errorMessage: predictMutation.error
+      ? predictMutation.error.message
+      : (predictImageMutation.error ? predictImageMutation.error.message : null),
     sampleCases,
+
     // Patient History Query & State
     patientHistory,
     isHistoryLoading,
@@ -426,5 +519,19 @@ export function useNeuroGraph() {
     isHistoryModalOpen,
     setIsHistoryModalOpen,
     handleSelectHistoricalPatient,
+
+    // Image-Based Facial GCN Screening State & Handlers
+    uploadedImageFile,
+    imagePreviewUrl,
+    activeVisionTab,
+    setActiveVisionTab,
+    selectedPortraitPresetId,
+    imagePredictionResult,
+    handleImageUpload,
+    handleSamplePortraitSelect,
+    handleClearImage,
+    handleRunImageInference,
+    predictImageMutation,
+    isImageInferring: predictImageMutation.isPending,
   };
 }

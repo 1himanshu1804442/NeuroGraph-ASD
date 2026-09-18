@@ -7,8 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -105,6 +108,35 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         log.error("Illegal argument error at URI [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Handles missing multipart file or request parameter exceptions.
+     * When a client fails to supply a required @RequestParam or multipart part, Spring throws
+     * MissingServletRequestParameterException or MultipartException/MissingServletRequestPartException.
+     * These are client-side input errors and must return 400 Bad Request rather than 500 Internal Server Error.
+     */
+    @ExceptionHandler({
+            MissingServletRequestPartException.class,
+            MissingServletRequestParameterException.class,
+            MultipartException.class
+    })
+    public ResponseEntity<ErrorResponseDTO> handleMissingRequestPartException(
+            Exception ex,
+            HttpServletRequest request) {
+
+        log.error("Missing required request parameter or multipart part at URI [{}]: {}",
+                request.getRequestURI(), ex.getMessage(), ex);
 
         ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
                 .timestamp(LocalDateTime.now())

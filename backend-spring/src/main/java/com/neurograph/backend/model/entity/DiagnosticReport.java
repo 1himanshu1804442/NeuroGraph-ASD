@@ -91,6 +91,19 @@ public class DiagnosticReport {
     private String biomarkerRoisJson;
 
     /**
+     * Base64-encoded thumbnail representation of uploaded facial image.
+     * Why: Allows instant visual re-inspection of the facial phenotypic input without external object storage.
+     */
+    @Column(name = "image_thumbnail_base64", columnDefinition = "TEXT")
+    private String imageThumbnailBase64;
+
+    /**
+     * Serialized JSON string containing 68 canonical facial landmark coordinates and anatomical regions.
+     */
+    @Column(name = "facial_landmarks_json", columnDefinition = "TEXT")
+    private String facialLandmarksJson;
+
+    /**
      * Timestamp when the diagnostic inference was executed and persisted.
      */
     @Column(name = "created_at", nullable = false, updatable = false)
