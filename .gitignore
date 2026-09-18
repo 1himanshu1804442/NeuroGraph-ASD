@@ -80,6 +80,10 @@ htmlcov/
 *.npy
 *.npz
 *.h5
+data/zenodo/
+data/*.txt
+models/*.pt
+results/
 
 # Local Logs & Databases
 *.log

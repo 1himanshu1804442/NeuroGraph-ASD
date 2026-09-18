@@ -8,6 +8,7 @@ import FacialBiomarkersCard from '../components/FacialBiomarkersCard';
 import FacialSaliencyList from '../components/FacialSaliencyList';
 import HistoricalRegistryView from '../components/HistoricalRegistryView';
 import PatientHistoryModal from '../components/PatientHistoryModal';
+import ModelBenchmarksView from '../components/ModelBenchmarksView';
 import { useNeuroGraph } from '../hooks/useNeuroGraph';
 import {
   Scan,
@@ -18,6 +19,7 @@ import {
   Sparkles,
   Layers,
   Activity,
+  BarChart3,
 } from 'lucide-react';
 
 /**
@@ -173,6 +175,28 @@ export default function Dashboard() {
                 </span>
               )}
             </button>
+
+            <button
+              type="button"
+              onClick={() => setDashboardMode('benchmarks')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 18px',
+                borderRadius: '8px',
+                fontSize: '0.84rem',
+                fontWeight: 700,
+                backgroundColor: dashboardMode === 'benchmarks' ? '#6366f1' : 'transparent',
+                color: dashboardMode === 'benchmarks' ? '#ffffff' : '#94a3b8',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <BarChart3 size={16} />
+              <span>Model Benchmarks (AJSE Literature)</span>
+            </button>
           </div>
 
           {/* Clinical Badge */}
@@ -309,8 +333,11 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+        ) : dashboardMode === 'benchmarks' ? (
+          /* View 2: Empirical Literature & Model Benchmarks View */
+          <ModelBenchmarksView onSwitchToScreening={() => setDashboardMode('facial_screening')} />
         ) : (
-          /* View 2: Full Historical Patient Registry View */
+          /* View 3: Full Historical Patient Registry View */
           <HistoricalRegistryView
             records={patientHistory}
             isLoading={isHistoryLoading}
